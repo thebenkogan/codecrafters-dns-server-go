@@ -1,60 +1,9 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
 	"net"
 )
-
-type Message struct {
-	id      uint16
-	qr      bool
-	opcode  uint8
-	aa      bool
-	tc      bool
-	rd      bool
-	ra      bool
-	z       uint8
-	rcode   uint8
-	qdcount uint16
-	ancount uint16
-	nscount uint16
-	arcount uint16
-}
-
-func (m *Message) bytes() []byte {
-	out := []byte{}
-
-	out = binary.BigEndian.AppendUint16(out, m.id)
-
-	var flags uint16
-	if m.qr {
-		flags |= 1 << 15
-	}
-	flags |= uint16(m.opcode) << 11
-	if m.aa {
-		flags |= 1 << 10
-	}
-	if m.tc {
-		flags |= 1 << 9
-	}
-	if m.rd {
-		flags |= 1 << 8
-	}
-	if m.ra {
-		flags |= 1 << 7
-	}
-	flags |= uint16(m.z) << 4
-	flags |= uint16(m.rcode)
-
-	out = binary.BigEndian.AppendUint16(out, flags)
-	out = binary.BigEndian.AppendUint16(out, m.qdcount)
-	out = binary.BigEndian.AppendUint16(out, m.ancount)
-	out = binary.BigEndian.AppendUint16(out, m.nscount)
-	out = binary.BigEndian.AppendUint16(out, m.arcount)
-
-	return out
-}
 
 func main() {
 	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:2053")
@@ -82,7 +31,7 @@ func main() {
 		receivedData := string(buf[:size])
 		fmt.Printf("Received %d bytes from %s: %s\n", size, source, receivedData)
 
-		headers := Message{
+		headers := Headers{
 			id:      1234,
 			qr:      true,
 			opcode:  0,
@@ -98,7 +47,6 @@ func main() {
 			arcount: 0,
 		}
 
-		// Create an empty response
 		response := headers.bytes()
 
 		_, err = udpConn.WriteToUDP(response, source)
