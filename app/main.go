@@ -31,25 +31,27 @@ func main() {
 		receivedData := string(buf[:size])
 		fmt.Printf("Received %d bytes from %s: %s\n", size, source, receivedData)
 
-		headers := Headers{
-			id:      1234,
-			qr:      true,
-			opcode:  0,
-			aa:      false,
-			tc:      false,
-			rd:      false,
-			ra:      false,
-			z:       0,
-			rcode:   0,
-			qdcount: 0,
-			ancount: 0,
-			nscount: 0,
-			arcount: 0,
+		response := Message{
+			headers: &Headers{
+				id:      1234,
+				qr:      true,
+				opcode:  0,
+				aa:      false,
+				tc:      false,
+				rd:      false,
+				ra:      false,
+				z:       0,
+				rcode:   0,
+				qdcount: 0,
+				ancount: 0,
+				nscount: 0,
+				arcount: 0,
+			},
 		}
 
-		response := headers.bytes()
+		response.addQuestion("codecrafters.io", 1, 1)
 
-		_, err = udpConn.WriteToUDP(response, source)
+		_, err = udpConn.WriteToUDP(response.bytes(), source)
 		if err != nil {
 			fmt.Println("Failed to send response:", err)
 		}

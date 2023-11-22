@@ -1,6 +1,27 @@
 package main
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"strings"
+)
+
+type Message struct {
+	headers   *Headers
+	questions []Question
+}
+
+func (m *Message) bytes() []byte {
+	out := m.headers.bytes()
+	for _, question := range m.questions {
+		out = append(out, question.bytes()...)
+	}
+	return out
+}
+
+func (m *Message) addQuestion(name string, typ uint16, class uint16) {
+	m.questions = append(m.questions, Question{name, typ, class})
+	m.headers.qdcount++
+}
 
 type Headers struct {
 	id      uint16
@@ -50,5 +71,27 @@ func (h *Headers) bytes() []byte {
 	out = binary.BigEndian.AppendUint16(out, h.ancount)
 	out = binary.BigEndian.AppendUint16(out, h.nscount)
 	out = binary.BigEndian.AppendUint16(out, h.arcount)
+	return out
+}
+
+type Question struct {
+	name  string
+	typ   uint16
+	class uint16
+}
+
+func (q *Question) bytes() []byte {
+	out := []byte{}
+
+	labels := strings.Split(q.name, ".")
+	for _, label := range labels {
+		out = append(out, byte(len(label)))
+		out = append(out, []byte(label)...)
+	}
+	out = append(out, []byte("\x00")...)
+
+	out = binary.BigEndian.AppendUint16(out, q.typ)
+	out = binary.BigEndian.AppendUint16(out, q.class)
+
 	return out
 }
