@@ -8,6 +8,15 @@ import (
 type Message struct {
 	headers   *Headers
 	questions []Question
+	answers   []ResourceRecord
+}
+
+func NewMessage(headers *Headers) *Message {
+	return &Message{
+		headers:   headers,
+		questions: []Question{},
+		answers:   []ResourceRecord{},
+	}
 }
 
 func (m *Message) bytes() []byte {
@@ -15,12 +24,29 @@ func (m *Message) bytes() []byte {
 	for _, question := range m.questions {
 		out = append(out, question.bytes()...)
 	}
+	for _, answer := range m.answers {
+		out = append(out, answer.bytes()...)
+	}
 	return out
 }
 
 func (m *Message) addQuestion(name string, typ uint16, class uint16) {
 	m.questions = append(m.questions, Question{name, typ, class})
 	m.headers.qdcount++
+}
+
+func (m *Message) addAnswer(name string, typ uint16, class uint16, ttl uint32, data [4]uint8) {
+	rr := ResourceRecord{
+		name:     name,
+		typ:      typ,
+		class:    class,
+		ttl:      ttl,
+		rdlength: uint16(len(data)),
+		rdata:    data,
+	}
+
+	m.answers = append(m.answers, rr)
+	m.headers.ancount++
 }
 
 type Headers struct {
@@ -74,6 +100,16 @@ func (h *Headers) bytes() []byte {
 	return out
 }
 
+func encodeName(name string) []byte {
+	out := []byte{}
+	for _, label := range strings.Split(name, ".") {
+		out = append(out, byte(len(label)))
+		out = append(out, []byte(label)...)
+	}
+	out = append(out, []byte("\x00")...)
+	return out
+}
+
 type Question struct {
 	name  string
 	typ   uint16
@@ -83,15 +119,31 @@ type Question struct {
 func (q *Question) bytes() []byte {
 	out := []byte{}
 
-	labels := strings.Split(q.name, ".")
-	for _, label := range labels {
-		out = append(out, byte(len(label)))
-		out = append(out, []byte(label)...)
-	}
-	out = append(out, []byte("\x00")...)
-
+	out = append(out, encodeName(q.name)...)
 	out = binary.BigEndian.AppendUint16(out, q.typ)
 	out = binary.BigEndian.AppendUint16(out, q.class)
+
+	return out
+}
+
+type ResourceRecord struct {
+	name     string
+	typ      uint16
+	class    uint16
+	ttl      uint32
+	rdlength uint16
+	rdata    [4]uint8
+}
+
+func (r *ResourceRecord) bytes() []byte {
+	out := []byte{}
+
+	out = append(out, encodeName(r.name)...)
+	out = binary.BigEndian.AppendUint16(out, r.typ)
+	out = binary.BigEndian.AppendUint16(out, r.class)
+	out = binary.BigEndian.AppendUint32(out, r.ttl)
+	out = binary.BigEndian.AppendUint16(out, r.rdlength)
+	out = append(out, r.rdata[:]...)
 
 	return out
 }

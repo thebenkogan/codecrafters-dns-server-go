@@ -31,8 +31,8 @@ func main() {
 		receivedData := string(buf[:size])
 		fmt.Printf("Received %d bytes from %s: %s\n", size, source, receivedData)
 
-		response := Message{
-			headers: &Headers{
+		response := NewMessage(
+			&Headers{
 				id:      1234,
 				qr:      true,
 				opcode:  0,
@@ -46,10 +46,11 @@ func main() {
 				ancount: 0,
 				nscount: 0,
 				arcount: 0,
-			},
-		}
+			})
 
 		response.addQuestion("codecrafters.io", 1, 1)
+
+		response.addAnswer("codecrafters.io", 1, 1, 60, [4]uint8{8, 8, 8, 8})
 
 		_, err = udpConn.WriteToUDP(response.bytes(), source)
 		if err != nil {
