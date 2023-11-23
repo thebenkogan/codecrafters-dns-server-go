@@ -27,21 +27,25 @@ func main() {
 			fmt.Println("Error receiving data:", err)
 			break
 		}
+		fmt.Printf("Received %d bytes from %s\n", size, source)
 
-		receivedData := string(buf[:size])
-		fmt.Printf("Received %d bytes from %s: %s\n", size, source, receivedData)
+		received := parse(buf[:size])
 
+		var rcode uint8
+		if received.headers.opcode != 0 {
+			rcode = 4
+		}
 		response := NewMessage(
 			&Headers{
-				id:      1234,
+				id:      received.headers.id,
 				qr:      true,
-				opcode:  0,
+				opcode:  received.headers.opcode,
 				aa:      false,
 				tc:      false,
-				rd:      false,
+				rd:      received.headers.rd,
 				ra:      false,
 				z:       0,
-				rcode:   0,
+				rcode:   rcode,
 				qdcount: 0,
 				ancount: 0,
 				nscount: 0,
