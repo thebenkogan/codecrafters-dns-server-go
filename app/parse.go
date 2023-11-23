@@ -1,8 +1,19 @@
 package main
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"strings"
+)
 
 func parse(bytes []byte) *Message {
+	headers := parseHeaders(bytes[:12])
+	questions, _ := parseQuestions(bytes[12:], int(headers.qdcount))
+	message := NewMessage(headers)
+	message.questions = questions
+	return message
+}
+
+func parseHeaders(bytes []byte) *Headers {
 	id := binary.BigEndian.Uint16(bytes[:2])
 	flags := binary.BigEndian.Uint16(bytes[2:4])
 	qdcount := binary.BigEndian.Uint16(bytes[4:6])
@@ -19,7 +30,7 @@ func parse(bytes []byte) *Message {
 	z := uint8((flags >> 4) & 0b111)
 	rcode := uint8(flags & 0b1111)
 
-	headers := Headers{
+	return &Headers{
 		id,
 		qr,
 		opcode,
@@ -34,6 +45,33 @@ func parse(bytes []byte) *Message {
 		nscount,
 		arcount,
 	}
+}
 
-	return NewMessage(&headers)
+func parseName(bytes []byte) (string, []byte) {
+	labels := []string{}
+
+	currIndex := 0
+	for bytes[currIndex] != 0 {
+		length := int(bytes[currIndex])
+		label := string(bytes[currIndex+1 : currIndex+length+1])
+		labels = append(labels, label)
+		currIndex = currIndex + length + 1
+	}
+
+	return strings.Join(labels, "."), bytes[currIndex+1:]
+}
+
+func parseQuestions(bytes []byte, amount int) ([]Question, []byte) {
+	questions := make([]Question, amount)
+
+	remainingBytes := bytes
+	for i := 0; i < amount; i++ {
+		name, remaining := parseName(remainingBytes)
+		typ := binary.BigEndian.Uint16(remaining[0:2])
+		class := binary.BigEndian.Uint16(remaining[2:4])
+		remainingBytes = remaining[4:]
+		questions[i] = Question{name, typ, class}
+	}
+
+	return questions, remainingBytes
 }
