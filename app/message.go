@@ -35,17 +35,8 @@ func (m *Message) addQuestion(name string, typ uint16, class uint16) {
 	m.headers.qdcount++
 }
 
-func (m *Message) addAnswer(name string, typ uint16, class uint16, ttl uint32, data [4]uint8) {
-	rr := ResourceRecord{
-		name:     name,
-		typ:      typ,
-		class:    class,
-		ttl:      ttl,
-		rdlength: uint16(len(data)),
-		rdata:    data,
-	}
-
-	m.answers = append(m.answers, &rr)
+func (m *Message) addAnswer(rr *ResourceRecord) {
+	m.answers = append(m.answers, rr)
 	m.headers.ancount++
 }
 

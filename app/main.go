@@ -95,8 +95,7 @@ func handler(received *Message, resolverConn *net.UDPConn) *Message {
 		forwardResponse := parse(buf[:n])
 
 		if len(forwardResponse.answers) > 0 {
-			answer := forwardResponse.answers[0]
-			response.addAnswer(answer.name, answer.typ, answer.class, answer.ttl, answer.rdata)
+			response.addAnswer(forwardResponse.answers[0])
 		}
 	}
 
