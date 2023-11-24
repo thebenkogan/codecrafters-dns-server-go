@@ -8,9 +8,11 @@ import (
 func parse(bytes []byte) *Message {
 	headers := parseHeaders(bytes[:12])
 	nr := NewNameResolver(bytes)
-	questions, _ := parseQuestions(bytes[12:], int(headers.qdcount), nr)
+	questions, remaining := parseQuestions(bytes[12:], int(headers.qdcount), nr)
+	answers, _ := parseAnswers(remaining, int(headers.ancount), nr)
 	message := NewMessage(headers)
 	message.questions = questions
+	message.answers = answers
 	return message
 }
 
@@ -97,4 +99,22 @@ func parseQuestions(bytes []byte, amount int, nr *NameResolver) ([]*Question, []
 	}
 
 	return questions, remainingBytes
+}
+
+func parseAnswers(bytes []byte, amount int, nr *NameResolver) ([]*ResourceRecord, []byte) {
+	answers := make([]*ResourceRecord, amount)
+
+	remainingBytes := bytes
+	for i := 0; i < amount; i++ {
+		name, remaining := nr.resolve(remainingBytes)
+		typ := binary.BigEndian.Uint16(remaining[0:2])
+		class := binary.BigEndian.Uint16(remaining[2:4])
+		ttl := binary.BigEndian.Uint32(remaining[4:8])
+		rdlength := binary.BigEndian.Uint16(remaining[8:10]) // always 4 for now
+		rdata := [4]uint8{remaining[10], remaining[11], remaining[12], remaining[13]}
+		remainingBytes = remaining[14:]
+		answers[i] = &ResourceRecord{name, typ, class, ttl, rdlength, rdata}
+	}
+
+	return answers, remainingBytes
 }
