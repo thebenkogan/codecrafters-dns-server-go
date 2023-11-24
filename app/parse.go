@@ -7,7 +7,8 @@ import (
 
 func parse(bytes []byte) *Message {
 	headers := parseHeaders(bytes[:12])
-	questions, _ := parseQuestions(bytes[12:], int(headers.qdcount))
+	nr := NewNameResolver(bytes)
+	questions, _ := parseQuestions(bytes[12:], int(headers.qdcount), nr)
 	message := NewMessage(headers)
 	message.questions = questions
 	return message
@@ -47,26 +48,48 @@ func parseHeaders(bytes []byte) *Headers {
 	}
 }
 
-func parseName(bytes []byte) (string, []byte) {
+type NameResolver struct {
+	bytes []byte
+}
+
+func NewNameResolver(bytes []byte) *NameResolver {
+	return &NameResolver{
+		bytes,
+	}
+}
+
+func isPointer(b byte) bool {
+	return (b >> 6) == 0b11
+}
+
+func (r *NameResolver) resolve(nameBytes []byte) (string, []byte) {
 	labels := []string{}
 
 	currIndex := 0
-	for bytes[currIndex] != 0 {
-		length := int(bytes[currIndex])
-		label := string(bytes[currIndex+1 : currIndex+length+1])
+	for nameBytes[currIndex] != 0 && !isPointer(nameBytes[currIndex]) {
+		length := int(nameBytes[currIndex])
+		label := string(nameBytes[currIndex+1 : currIndex+length+1])
 		labels = append(labels, label)
 		currIndex = currIndex + length + 1
 	}
 
-	return strings.Join(labels, "."), bytes[currIndex+1:]
+	if isPointer(nameBytes[currIndex]) {
+		offset := binary.BigEndian.Uint16(nameBytes[currIndex : currIndex+2])
+		offset = (offset << 2) >> 2 // unset the starting ones
+		end, _ := r.resolve(r.bytes[offset:])
+		labels = append(labels, end)
+		currIndex++
+	}
+
+	return strings.Join(labels, "."), nameBytes[currIndex+1:]
 }
 
-func parseQuestions(bytes []byte, amount int) ([]Question, []byte) {
+func parseQuestions(bytes []byte, amount int, nr *NameResolver) ([]Question, []byte) {
 	questions := make([]Question, amount)
 
 	remainingBytes := bytes
 	for i := 0; i < amount; i++ {
-		name, remaining := parseName(remainingBytes)
+		name, remaining := nr.resolve(remainingBytes)
 		typ := binary.BigEndian.Uint16(remaining[0:2])
 		class := binary.BigEndian.Uint16(remaining[2:4])
 		remainingBytes = remaining[4:]

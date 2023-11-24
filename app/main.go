@@ -52,9 +52,10 @@ func main() {
 				arcount: 0,
 			})
 
-		response.addQuestion(received.questions[0].name, 1, 1)
-
-		response.addAnswer(received.questions[0].name, 1, 1, 60, [4]uint8{8, 8, 8, 8})
+		for _, question := range received.questions {
+			response.addQuestion(question.name, 1, 1)
+			response.addAnswer(question.name, 1, 1, 60, [4]uint8{8, 8, 8, 8})
+		}
 
 		_, err = udpConn.WriteToUDP(response.bytes(), source)
 		if err != nil {
