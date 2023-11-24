@@ -1,35 +1,20 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"net"
 )
 
 func main() {
-	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:2053")
-	if err != nil {
-		fmt.Println("Failed to resolve UDP address:", err)
-		return
-	}
+	forwardAddress := flag.String("resolver", "", "address to forward questions")
+	flag.Parse()
+	fmt.Println("resolver", *forwardAddress)
 
-	udpConn, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		fmt.Println("Failed to bind to address:", err)
-		return
-	}
-	defer udpConn.Close()
+	client := NewUDPClient("127.0.0.1:2053")
+	defer client.Close()
 
-	buf := make([]byte, 512)
-
-	for {
-		size, source, err := udpConn.ReadFromUDP(buf)
-		if err != nil {
-			fmt.Println("Error receiving data:", err)
-			break
-		}
-		fmt.Printf("Received %d bytes from %s\n", size, source)
-
-		received := parse(buf[:size])
+	handler := func(bytes []byte) []byte {
+		received := parse(bytes)
 
 		var rcode uint8
 		if received.headers.opcode != 0 {
@@ -57,9 +42,8 @@ func main() {
 			response.addAnswer(question.name, 1, 1, 60, [4]uint8{8, 8, 8, 8})
 		}
 
-		_, err = udpConn.WriteToUDP(response.bytes(), source)
-		if err != nil {
-			fmt.Println("Failed to send response:", err)
-		}
+		return response.bytes()
 	}
+
+	client.ListenAndServe(handler)
 }

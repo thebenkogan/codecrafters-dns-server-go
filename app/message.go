@@ -7,15 +7,15 @@ import (
 
 type Message struct {
 	headers   *Headers
-	questions []Question
-	answers   []ResourceRecord
+	questions []*Question
+	answers   []*ResourceRecord
 }
 
 func NewMessage(headers *Headers) *Message {
 	return &Message{
 		headers:   headers,
-		questions: []Question{},
-		answers:   []ResourceRecord{},
+		questions: []*Question{},
+		answers:   []*ResourceRecord{},
 	}
 }
 
@@ -31,7 +31,7 @@ func (m *Message) bytes() []byte {
 }
 
 func (m *Message) addQuestion(name string, typ uint16, class uint16) {
-	m.questions = append(m.questions, Question{name, typ, class})
+	m.questions = append(m.questions, &Question{name, typ, class})
 	m.headers.qdcount++
 }
 
@@ -45,7 +45,7 @@ func (m *Message) addAnswer(name string, typ uint16, class uint16, ttl uint32, d
 		rdata:    data,
 	}
 
-	m.answers = append(m.answers, rr)
+	m.answers = append(m.answers, &rr)
 	m.headers.ancount++
 }
 

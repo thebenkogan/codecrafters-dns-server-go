@@ -54,7 +54,7 @@ type NameResolver struct {
 
 func NewNameResolver(bytes []byte) *NameResolver {
 	return &NameResolver{
-		bytes,
+		bytes: bytes,
 	}
 }
 
@@ -84,8 +84,8 @@ func (r *NameResolver) resolve(nameBytes []byte) (string, []byte) {
 	return strings.Join(labels, "."), nameBytes[currIndex+1:]
 }
 
-func parseQuestions(bytes []byte, amount int, nr *NameResolver) ([]Question, []byte) {
-	questions := make([]Question, amount)
+func parseQuestions(bytes []byte, amount int, nr *NameResolver) ([]*Question, []byte) {
+	questions := make([]*Question, amount)
 
 	remainingBytes := bytes
 	for i := 0; i < amount; i++ {
@@ -93,7 +93,7 @@ func parseQuestions(bytes []byte, amount int, nr *NameResolver) ([]Question, []b
 		typ := binary.BigEndian.Uint16(remaining[0:2])
 		class := binary.BigEndian.Uint16(remaining[2:4])
 		remainingBytes = remaining[4:]
-		questions[i] = Question{name, typ, class}
+		questions[i] = &Question{name, typ, class}
 	}
 
 	return questions, remainingBytes
